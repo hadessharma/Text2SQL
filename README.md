@@ -119,7 +119,7 @@ CREATE TABLE departments (
 
 ## 🔍 TRC Output Format
 
-**Format**: Declarative, user-understandable natural language descriptions
+**Format**: Raw Tuple Relational Calculus expressions
 
 **Example**:
 ```
@@ -129,19 +129,8 @@ Query Translation:
 SQL Generated:
 SELECT * FROM employees WHERE age > 30
 
-Human-Readable Explanation:
-This query retrieves all employee records where the age field is greater than 30 years old.
-
-Data Sources:
-- employees table (contains employee information)
-
-Filters Applied:
-- Age must be greater than 30
-
-Security Check:
-✓ No sensitive data exposure
-✓ No unauthorized table access
-✓ Query follows access policies
+TRC Output:
+{t | t ∈ employees ∧ t.age > 30}
 ```
 
 ## 📋 Implementation Checklist
