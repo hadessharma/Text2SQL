@@ -119,7 +119,7 @@ CREATE TABLE departments (
 
 ## 🔍 TRC Output Format
 
-**Format**: Raw Tuple Relational Calculus expressions
+**Format**: Declarative Tuple Relational Calculus expressions
 
 **Example**:
 ```
@@ -130,7 +130,7 @@ SQL Generated:
 SELECT * FROM employees WHERE age > 30
 
 TRC Output:
-{t | t ∈ employees ∧ t.age > 30}
+{t | Employee(t) ∧ t.age > 30}
 ```
 
 ## 📋 Implementation Checklist
