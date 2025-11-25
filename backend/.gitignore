@@ -26,7 +26,6 @@ model_cache/
 
 # KG Storage (optional - might want to keep)
 kg_storage/
-*.json
 *.pkl
 
 # Logs
