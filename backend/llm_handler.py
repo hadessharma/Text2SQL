@@ -1,98 +1,145 @@
 """
 LLM Handler Module
 
-This module handles SQL generation from natural language queries using
-the FLAN-T5 model via the transformers library.
+SQL generation using FLAN-T5 Text-to-SQL model via HuggingFace transformers.
 
 Function:
-    generate_sql(schema, user_query): Generate SQL from natural language
-
-Integration:
-    - Uses transformers library to load FLAN-T5 model
-    - Processes schema and query together for context-aware generation
+    generate_sql(tables, user_query): Generate SQL from natural language.
 """
 
-from typing import Optional
 import os
+import logging
+from typing import Dict, List
 
-# TODO: Import transformers library once installed
-# from transformers import T5ForConditionalGeneration, T5Tokenizer
+try:
+    from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+    import torch
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+    logging.warning("transformers library not available. Falling back to rule-based SQL.")
+
+# Global model cache
+_model = None
+_tokenizer = None
 
 
-def generate_sql(schema: str, user_query: str) -> str:
+# Main SQL Generation
+
+def generate_sql(user_query: str, tables: Dict[str, List[str]]) -> str:
     """
-    Generate SQL query from natural language using FLAN-T5 model.
-    
-    TODO: Implement the following:
-    1. Load FLAN-T5 model and tokenizer (or use pipeline)
-    2. Format prompt with schema context and user query
-    3. Generate SQL using model inference
-    4. Post-process and clean generated SQL
-    5. Return generated SQL query
-    
-    Prompt Format Example:
-        "Translate to SQL: Given the schema: {schema}, 
-         Query: {user_query}"
+    Generate SQL query from natural language using FLAN-T5.
     
     Args:
-        schema: Database schema in SQL DDL format
-        user_query: Natural language query string
-        
+        user_query: Natural language query string.
+        tables: Dictionary of table_name -> list of columns
+    
     Returns:
-        str: Generated SQL query
-        
-    Example:
-        >>> schema = "CREATE TABLE employees (id INT, name VARCHAR(100));"
-        >>> query = "Find all employees"
-        >>> sql = generate_sql(schema, query)
-        >>> print(sql)
-        "SELECT * FROM employees;"
+        str: SQL query string
     """
     try:
-        # TODO: Load model and tokenizer
-        # model = T5ForConditionalGeneration.from_pretrained("google/flan-t5-base")
-        # tokenizer = T5Tokenizer.from_pretrained("google/flan-t5-base")
-        
-        # TODO: Format input prompt
-        # prompt = f"Translate to SQL: Schema: {schema}\nQuery: {user_query}"
-        
-        # TODO: Tokenize input
-        # inputs = tokenizer(prompt, return_tensors="pt", max_length=512, truncation=True)
-        
-        # TODO: Generate SQL
-        # outputs = model.generate(**inputs, max_length=256)
-        # sql = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
-        # Placeholder
-        return f"SELECT * FROM table WHERE condition;  -- TODO: Generate using FLAN-T5"
-    
-    except Exception as e:
-        # TODO: Add proper error handling and logging
-        print(f"Error generating SQL: {e}")
-        raise
+        if not TRANSFORMERS_AVAILABLE:
+            return _fallback_sql_generation(tables, user_query)
 
+        initialize_model()
+
+        input_ids = _prepare_input(user_query, tables)
+        input_ids = input_ids.to(_model.device)
+
+        outputs = _model.generate(
+            input_ids,
+            num_beams=10,
+            max_length=512
+        )
+
+        sql = _tokenizer.decode(outputs[0], skip_special_tokens=True)
+        sql = _clean_sql(sql)
+        return sql
+
+    except Exception as e:
+        logging.error(f"Error during SQL generation: {e}")
+        return _fallback_sql_generation(tables, user_query)
+
+
+# Model Initialization
 
 def initialize_model():
     """
-    Initialize and cache FLAN-T5 model.
-    
-    TODO: Implement model loading with caching to avoid reloading on each request.
-    Consider using a global variable or singleton pattern.
-    
-    This should be called once at application startup.
+    Load FLAN-T5 model and tokenizer once.
     """
-    # TODO: Load model and store in global variable
-    # global model, tokenizer
-    # model = T5ForConditionalGeneration.from_pretrained("google/flan-t5-base")
-    # tokenizer = T5Tokenizer.from_pretrained("google/flan-t5-base")
-    pass
+    global _model, _tokenizer
 
+    if not TRANSFORMERS_AVAILABLE:
+        return
+
+    if _model is not None and _tokenizer is not None:
+        return  # already loaded
+
+    model_name = os.getenv("MODEL_NAME", "juierror/flan-t5-text2sql-with-schema-v2")
+    cache_dir = os.getenv("MODEL_CACHE_DIR", "./model_cache")
+
+    logging.info(f"Loading FLAN-T5 model: {model_name}")
+
+    _tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
+    _model = AutoModelForSeq2SeqLM.from_pretrained(model_name, cache_dir=cache_dir)
+    _model.eval()
+    if torch.cuda.is_available():
+        _model.to("cuda")
+
+    logging.info("FLAN-T5 loaded successfully")
+
+
+# Input preparation
+
+def _get_prompt(tables: str, question: str) -> str:
+    return f"convert question and table into SQL query. tables: {tables}. question: {question}"
+
+
+def _prepare_input(question: str, tables: Dict[str, List[str]]):
+    """
+    Convert table dict into prompt string and tokenize.
+    """
+    table_strs = [f"{name}({','.join(cols)})" for name, cols in tables.items()]
+    tables_prompt = ", ".join(table_strs)
+    prompt = _get_prompt(tables_prompt, question)
+    input_ids = _tokenizer(prompt, max_length=512, truncation=True, return_tensors="pt").input_ids
+    return input_ids
+
+
+# Output cleaning
+
+def _clean_sql(sql: str) -> str:
+    sql = sql.strip()
+    if not sql.endswith(";"):
+        sql += ";"
+    return sql
+
+
+# Fallback
+
+def _fallback_sql_generation(tables: Dict[str, List[str]], user_query: str) -> str:
+    """
+    Simple rule-based SQL if model unavailable.
+    """
+    if not tables:
+        return "SELECT * FROM table;"
+    
+    first_table = list(tables.keys())[0]
+
+    if "department" in user_query.lower():
+        return "SELECT * FROM departments;"
+    if "employee" in user_query.lower():
+        return "SELECT * FROM employees;"
+    
+    return f"SELECT * FROM {first_table};"
+
+
+# Cleanup
 
 def cleanup_model():
     """
-    Cleanup model resources.
-    
-    TODO: Implement if needed for memory management
+    Release model and tokenizer.
     """
-    pass
-
+    global _model, _tokenizer
+    _model = None
+    _tokenizer = None
