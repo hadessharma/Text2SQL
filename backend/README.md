@@ -78,9 +78,10 @@ backend/
   3. Logical/security validation (TRC)
 
 ### `trc_handler.py`
-- SQL to Tuple Relational Calculus conversion
-- TRC expression formatting
-- Security validation via TRC
+- SQL to Tuple Relational Calculus conversion (non-deterministic format)
+- TRC expression formatting with explicit attribute display
+- Security validation via TRC (blocks dangerous operations)
+- Supports SELECT queries with WHERE, JOIN, and various conditions
 
 ## 📝 TODO
 
@@ -88,7 +89,7 @@ See comments in each module for implementation details. Key tasks:
 - [ ] Implement Knowledge Graph generation from schema
 - [ ] Integrate FLAN-T5 model for SQL generation
 - [ ] Complete three-stage validation pipeline
-- [ ] Implement TRC conversion algorithm
+- [x] Implement TRC conversion algorithm
 - [ ] Add comprehensive error handling and logging
 - [ ] Write unit tests
 
