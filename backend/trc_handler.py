@@ -1,19 +1,19 @@
 """
 Tuple Relational Calculus (TRC) Handler Module
 
-This module handles bidirectional conversion between SQL and Tuple Relational Calculus.
+This module handles conversion from SQL to Tuple Relational Calculus.
 TRC provides a mathematical foundation for query validation and security checks.
 
 Functions:
     convert_sql_to_trc(sql_query, kg_data): Convert SQL to TRC expression
-    convert_trc_to_sql(trc_expression, kg_data): Convert TRC to SQL (future use)
+    format_trc_explanation(trc_expression, sql_query, user_query): Format TRC for display
 
-TRC Format:
-    {t | Condition(t)} where t is a tuple variable
-    Example: {t | Employee(t) ∧ t.age > 30}
+TRC Format (non-deterministic):
+    { E.attr1, E.attr2 | employee(E) and condition }
+    Example: { E.name, E.age | employee(E) and E.age > 30 }
 """
 
-from typing import Dict, Optional, List
+from typing import Dict, List
 import re
 import sqlparse
 from sqlparse.sql import Statement, IdentifierList, Identifier, Where
@@ -78,39 +78,6 @@ def convert_sql_to_trc(sql_query: str, kg_data: Dict) -> str:
         raise
     except Exception as e:
         raise ValueError(f"Failed to convert SQL to TRC: {str(e)}")
-
-
-def convert_trc_to_sql(trc_expression: str, kg_data: Dict) -> str:
-    """
-    Convert TRC expression to SQL query (for future use).
-    
-    TODO: Implement if needed for bidirectional conversion or query optimization.
-    
-    Args:
-        trc_expression: TRC expression string
-        kg_data: Knowledge Graph data for schema context
-        
-    Returns:
-        str: SQL query string
-    """
-    # TODO: Implement TRC → SQL conversion if needed
-    pass
-
-
-def validate_trc_expression(trc_expression: str) -> bool:
-    """
-    Validate TRC expression syntax and structure.
-    
-    TODO: Implement TRC syntax validation if needed.
-    
-    Args:
-        trc_expression: TRC expression string
-        
-    Returns:
-        bool: True if valid, False otherwise
-    """
-    # TODO: Implement TRC validation
-    return True
 
 
 def format_trc_explanation(trc_expression: str, sql_query: str, user_query: str) -> str:
