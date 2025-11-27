@@ -5,6 +5,8 @@ const SchemaUpload = () => {
   const navigate = useNavigate();
   const [dragActive, setDragActive] = useState(false);
   const [schemaText, setSchemaText] = useState('');
+  const [lowerBoundSchema, setLowerBoundSchema] = useState('');
+  const [upperBoundSchema, setUpperBoundSchema] = useState('');
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -20,7 +22,7 @@ const SchemaUpload = () => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
       if (file.type === "text/plain" || file.name.endsWith('.sql')) {
@@ -44,11 +46,53 @@ const SchemaUpload = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleLowerBoundUpload = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setLowerBoundSchema(event.target.result);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleUpperBoundUpload = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setUpperBoundSchema(event.target.result);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleSubmit = async () => {
     if (schemaText.trim()) {
-      // TODO: Implement schema submission
-      console.log('Schema submitted:', schemaText);
-      navigate('/query');
+      try {
+        const response = await fetch('http://localhost:8000/api/submit-schema', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            schema_content: schemaText,
+            lower_bound_schema: lowerBoundSchema,
+            upper_bound_schema: upperBoundSchema
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Schema submitted:', data);
+          navigate('/query');
+        } else {
+          console.error('Failed to submit schema');
+        }
+      } catch (error) {
+        console.error('Error submitting schema:', error);
+      }
     }
   };
 
@@ -73,11 +117,10 @@ const SchemaUpload = () => {
         {/* Upload Area */}
         <div className="mb-8">
           <div
-            className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-              dragActive 
-                ? 'border-blue-400 bg-blue-50' 
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
+            className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${dragActive
+              ? 'border-blue-400 bg-blue-50'
+              : 'border-gray-300 hover:border-gray-400'
+              }`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
@@ -118,6 +161,53 @@ const SchemaUpload = () => {
             placeholder="CREATE TABLE users (&#10;  id INT PRIMARY KEY,&#10;  name VARCHAR(100),&#10;  email VARCHAR(100)&#10;);&#10;&#10;CREATE TABLE orders (&#10;  id INT PRIMARY KEY,&#10;  user_id INT,&#10;  amount DECIMAL(10,2),&#10;  FOREIGN KEY (user_id) REFERENCES users(id)&#10;);"
             className="w-full h-64 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm"
           />
+        </div>
+
+        {/* Additional Schema Files */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Lower Bound Schema (JSON)
+            </label>
+            <div className="relative border border-gray-300 rounded-lg p-4 hover:border-blue-400 transition-colors">
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleLowerBoundUpload}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              <div className="flex items-center space-x-3">
+                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="text-sm text-gray-600 truncate">
+                  {lowerBoundSchema ? 'File selected' : 'Upload Lower Bound Schema'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Upper Bound Schema (JSON)
+            </label>
+            <div className="relative border border-gray-300 rounded-lg p-4 hover:border-blue-400 transition-colors">
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleUpperBoundUpload}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              <div className="flex items-center space-x-3">
+                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="text-sm text-gray-600 truncate">
+                  {upperBoundSchema ? 'File selected' : 'Upload Upper Bound Schema'}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Action Buttons */}
