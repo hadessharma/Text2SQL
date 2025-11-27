@@ -37,6 +37,8 @@ app.add_middleware(
 class SchemaRequest(BaseModel):
     """Request model for schema upload"""
     schema_content: str  # SQL DDL format
+    lower_bound_schema: Optional[str] = None
+    upper_bound_schema: Optional[str] = None
 
 
 class SchemaResponse(BaseModel):
@@ -80,12 +82,27 @@ async def submit_schema(request: SchemaRequest):
         # TODO: Implement schema validation
         # TODO: Generate Knowledge Graph
         # TODO: Save to store and get database_id
-        # database_id = save_kg(db_id, kg_data)
+        
+        # Placeholder ID generation
+        import uuid
+        db_id = str(uuid.uuid4())
+        
+        # Placeholder KG data structure
+        kg_data = {
+            "schema_content": request.schema_content,
+            "lower_bound_schema": request.lower_bound_schema,
+            "upper_bound_schema": request.upper_bound_schema,
+            "generated_kg": {} # TODO: Generate actual KG
+        }
+        
+        # Save to store
+        from kg_store import save_kg
+        save_kg(db_id, kg_data)
         
         # Placeholder response
         return SchemaResponse(
-            database_id="placeholder_id",
-            message="Schema uploaded successfully. TODO: Implement actual logic."
+            database_id=db_id,
+            message="Schema uploaded successfully."
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -21,7 +21,7 @@ import uuid
 from pathlib import Path
 
 # TODO: Configure storage directory path
-STORAGE_DIR = Path("kg_storage")
+STORAGE_DIR = Path(__file__).parent / "kg_storage"
 STORAGE_DIR.mkdir(exist_ok=True)
 
 
@@ -51,7 +51,7 @@ def save_kg(db_id: str, kg_data: Dict) -> bool:
     
     Args:
         db_id: Unique database identifier
-        kg_data: Knowledge Graph data structure (format TBD)
+        kg_data: Knowledge Graph data structure including schemas
         
     Returns:
         bool: True if save successful, False otherwise
