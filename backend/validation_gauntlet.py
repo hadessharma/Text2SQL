@@ -139,40 +139,123 @@ def is_semantically_valid(sql_query: str, kg_data: Dict) -> Dict:
         return {"valid": False, "errors": [f"Semantic error: {str(e)}"]}
 
 
+def normalize_kg(kg_data: Dict) -> Dict:
+    normalized = {}
+    for table, table_info in kg_data.items():
+        table_l = table.lower()
+        normalized[table_l] = {
+            "required": table_info["required"],
+            "columns": {col.lower(): req for col, req in table_info["columns"].items()}
+        }
+    return normalized
+
+
 def is_logically_valid(sql_query: str, kg_data: Dict) -> Dict:
     """
-    Stage 3: Logical and security validation via TRC conversion.
-    
-    TODO: Implement the following:
-    1. Convert SQL to TRC (this validates logical structure)
-    2. Check for security issues (SQL injection patterns, dangerous operations)
-    3. Validate query logic and constraints
-    4. Check for potential data leaks or unauthorized access
-    5. Return validation result with error details
-    
-    Args:
-        sql_query: SQL query string
-        kg_data: Knowledge Graph data for context
-        
+    Takes in a JSON of the following format for KG
+    [
+        {
+            'name' : 'tableOne',
+            'required' : 'TRUE'
+            'columnes' : [
+                {
+                    'name' : 'columnOne'
+                    'required' : 'TRUE'
+                },
+                {
+                    'name' : 'columnTwo'
+                    'required' : 'False'
+                }
+            ]
+        },
+        {
+            'name' : 'tableOne',
+            'required' : 'TRUE'
+            'columnes' : [
+                {
+                    'name' : 'columnOne'
+                    'required' : 'TRUE'
+                },
+                {
+                    'name' : 'columnTwo'
+                    'required' : 'False'
+                }
+            ]
+        }
+    ]
     Returns:
-        Dict: {"valid": bool, "errors": list}
+    Dict: {"valid": bool, "errors": list}
+    Checks for CREATE and DROP queries.
+    Also checks for insert.
     """
-    try:
-        # TODO: Attempt TRC conversion (if it fails, query is logically invalid)
-        # from trc_handler import convert_sql_to_trc
-        # trc = convert_sql_to_trc(sql_query, kg_data)
-        
-        # TODO: Security checks
-        # - Detect dangerous operations (DROP, DELETE without WHERE, etc.)
-        # - Check for SQL injection patterns
-        # - Validate access permissions
-        
-        # Placeholder
-        return {"valid": True, "errors": []}
-    
-    except Exception as e:
-        return {"valid": False, "errors": [f"Logical/security error: {str(e)}"]}
+    errors = []
+    kg_data = normalize_kg(kg_data)
+    # Normalize spacing
+    sql_clean = sql_query.strip().lower()
 
+    # ----------- CHECK CREATE TABLE -----------
+    m = re.match(r"create\s+table\s+(\w+)", sql_clean)
+    if m:
+        table = m.group(1)
+        if table not in kg_data:
+            errors.append(f"CREATE TABLE '{table}' is not allowed (not defined).")
+        elif kg_data[table]["required"]:
+            errors.append(f"CREATE TABLE '{table}' not allowed (table is required).")
+        return {"valid": len(errors) == 0, "errors": errors}
+
+    # ----------- CHECK DROP TABLE -----------
+    m = re.match(r"drop\s+table\s+(\w+)", sql_clean)
+    if m:
+        table = m.group(1)
+        if table not in kg_data:
+            errors.append(f"DROP TABLE '{table}' is not allowed (not defined).")
+        elif kg_data[table]["required"]:
+            errors.append(f"DROP TABLE '{table}' not allowed (table is required).")
+        return {"valid": len(errors) == 0, "errors": errors}
+
+    # ----------- CHECK ALTER TABLE ADD COLUMN -----------
+    m = re.match(r"alter\s+table\s+(\w+)\s+add\s+column\s+(\w+)", sql_clean)
+    if m:
+        table, column = m.groups()
+        if table not in kg_data:
+            errors.append(f"ALTER TABLE on '{table}' is not allowed (table not defined).")
+        else:
+            if column not in kg_data[table]["columns"]:
+                errors.append(f"Column '{column}' not allowed for table '{table}'.")
+            elif not kg_data[table]["columns"][column]:
+                errors.append(f"Column '{column}' cannot be added (not required = FALSE).")
+        return {"valid": len(errors) == 0, "errors": errors}
+
+    # ----------- CHECK ALTER TABLE DROP COLUMN -----------
+    m = re.match(r"alter\s+table\s+(\w+)\s+drop\s+column\s+(\w+)", sql_clean)
+    if m:
+        table, column = m.groups()
+        if table not in kg_data:
+            errors.append(f"ALTER TABLE on '{table}' is not allowed (table not defined).")
+        else:
+            if column not in tabkg_datales[table]["columns"]:
+                errors.append(f"Column '{column}' does not exist in metadata.")
+            elif kg_data[table]["columns"][column]:
+                errors.append(f"Column '{column}' is required and cannot be dropped.")
+        return {"valid": len(errors) == 0, "errors": errors}
+
+    # ----------- CHECK INSERT INTO -----------
+    m = re.match(r"insert\s+into\s+(\w+)\s*\((.*?)\)\s*values", sql_clean)
+    if m:
+        table, cols_raw = m.groups()
+        cols = [c.strip() for c in cols_raw.split(",")]
+
+        if table not in kg_data:
+            errors.append(f"INSERT into '{table}' is not allowed (table not defined).")
+        else:
+            # all required columns must be listed
+            for col, required in kg_data[table]["columns"].items():
+                if required and col not in cols:
+                    errors.append(f"Required column '{col}' missing from INSERT into '{table}'.")
+
+        return {"valid": len(errors) == 0, "errors": errors}
+
+    return {"valid": False, "errors": ["SQL query type not recognized or unsupported."]}
 
 def extract_tables_from_sql(sql_query: str) -> list:
     """
