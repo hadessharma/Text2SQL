@@ -66,33 +66,30 @@ const OutputDisplay = () => {
             <nav className="-mb-px flex space-x-8">
               <button
                 onClick={() => setActiveTab('sql')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'sql'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'sql'
+                  ? 'border-purple-500 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 Generated SQL
               </button>
 
               <button
                 onClick={() => setActiveTab('explanation')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'explanation'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'explanation'
+                  ? 'border-purple-500 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 TRC Explanation
               </button>
 
               <button
                 onClick={() => setActiveTab('validation')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'validation'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'validation'
+                  ? 'border-purple-500 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 Validation
               </button>
@@ -125,33 +122,114 @@ const OutputDisplay = () => {
           {activeTab === 'explanation' && (
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Tuple Relational Calculus Explanation</h3>
-              <div className="bg-blue-50 rounded-lg p-6">
-                <p className="text-gray-800 whitespace-pre-line">
-                  {responseData.trc_explanation}
-                </p>
+
+              <div className="space-y-6">
+                {/* Formal Notation Card */}
+                <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                  <div className="bg-purple-50 px-6 py-4 border-b border-purple-100">
+                    <h4 className="font-bold text-purple-800 flex items-center">
+                      <span className="text-xl mr-2">∑</span> Formal Notation
+                    </h4>
+                  </div>
+                  <div className="p-6 bg-gray-50">
+                    <code className="text-lg font-mono text-purple-700 bg-white px-4 py-2 rounded border border-purple-200 block w-full overflow-x-auto">
+                      {responseData.trc_explanation.trc}
+                    </code>
+                  </div>
+                </div>
+
+                {/* English Description Card */}
+                <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                  <div className="bg-blue-50 px-6 py-4 border-b border-blue-100">
+                    <h4 className="font-bold text-blue-800 flex items-center">
+                      <span className="text-xl mr-2">ℹ️</span> English Description
+                    </h4>
+                  </div>
+                  <div className="p-6">
+                    <p className="text-gray-700 text-lg leading-relaxed">
+                      {responseData.trc_explanation.description}
+                    </p>
+                  </div>
+                </div>
+
+                {/* SQL Mapping Card */}
+                <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                  <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                    <h4 className="font-bold text-gray-700 flex items-center">
+                      <span className="text-xl mr-2">🔄</span> SQL Mapping
+                    </h4>
+                  </div>
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Original Query</span>
+                      <p className="mt-1 text-gray-900 font-medium">"{responseData.trc_explanation.query}"</p>
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Generated SQL</span>
+                      <code className="mt-1 block text-sm font-mono text-gray-600 bg-gray-100 p-2 rounded">
+                        {responseData.trc_explanation.sql}
+                      </code>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
           {activeTab === 'validation' && (
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Validation Results</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Validation Pipeline Results</h3>
 
-              <div className="bg-gray-50 rounded-lg p-6">
-                <pre className="text-gray-800 whitespace-pre-wrap text-sm">
-                  {JSON.stringify(responseData.validation_status, null, 2)}
-                </pre>
-
-                {responseData.errors?.length > 0 && (
-                  <div className="mt-4 bg-red-50 p-4 border-l-4 border-red-500 rounded-lg">
-                    <h4 className="text-red-700 font-bold mb-2">Errors</h4>
-                    <ul className="list-disc ml-6 text-red-700">
-                      {responseData.errors.map((err, i) => (
-                        <li key={i}>{err}</li>
-                      ))}
-                    </ul>
+              <div className="space-y-4">
+                {/* Syntactic Validation */}
+                <div className={`p-4 rounded-lg border ${responseData.validation_status.syntactic?.valid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-gray-900">1. Syntactic Validation</h4>
+                    <span className="text-xl">{responseData.validation_status.syntactic?.valid ? '✅' : '❌'}</span>
                   </div>
-                )}
+                  <p className="text-sm text-gray-600 mb-2">Checks for valid SQL syntax.</p>
+                  {responseData.validation_status.syntactic?.errors?.length > 0 && (
+                    <ul className="list-disc ml-5 text-sm text-red-700">
+                      {responseData.validation_status.syntactic.errors.map((err, i) => <li key={i}>{err}</li>)}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Semantic Validation */}
+                <div className={`p-4 rounded-lg border ${responseData.validation_status.semantic?.valid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-gray-900">2. Semantic Validation</h4>
+                    <span className="text-xl">{responseData.validation_status.semantic?.valid ? '✅' : '❌'}</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-2">Checks against Knowledge Graph schema.</p>
+                  {responseData.validation_status.semantic?.errors?.length > 0 && (
+                    <ul className="list-disc ml-5 text-sm text-red-700">
+                      {responseData.validation_status.semantic.errors.map((err, i) => <li key={i}>{err}</li>)}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Logical Validation */}
+                <div className={`p-4 rounded-lg border ${responseData.validation_status.logical?.valid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-gray-900">3. Logical & Security Validation</h4>
+                    <span className="text-xl">{responseData.validation_status.logical?.valid ? '✅' : '❌'}</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-2">Checks for allowed operations and security rules.</p>
+                  {responseData.validation_status.logical?.errors?.length > 0 && (
+                    <ul className="list-disc ml-5 text-sm text-red-700">
+                      {responseData.validation_status.logical.errors.map((err, i) => <li key={i}>{err}</li>)}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Overall Status */}
+                <div className="mt-6 p-4 bg-gray-100 rounded-lg text-center">
+                  <span className="font-bold text-gray-700">Overall Status: </span>
+                  <span className={`font-bold ${responseData.validation_status.overall_valid ? 'text-green-600' : 'text-red-600'}`}>
+                    {responseData.validation_status.overall_valid ? 'PASSED' : 'FAILED'}
+                  </span>
+                </div>
               </div>
             </div>
           )}
