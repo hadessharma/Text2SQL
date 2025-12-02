@@ -1,0 +1,29 @@
+{
+    "tables": {
+        "employees": {
+            "required": true,
+            "columns": {
+                "id": true,
+                "name": true,
+                "department_id": true,
+                "salary": false,
+                "hire_date": false
+            }
+        },
+        "departments": {
+            "required": true,
+            "columns": {
+                "id": true,
+                "name": true,
+                "location": false
+            }
+        },
+        "projects": {
+            "required": false,
+            "columns": {
+                "id": true,
+                "name": true
+            }
+        }
+    }
+}

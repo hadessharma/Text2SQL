@@ -1,0 +1,19 @@
+{
+    "tables": {
+        "employees": {
+            "required": true,
+            "columns": {
+                "id": true,
+                "name": true,
+                "department_id": true
+            }
+        },
+        "departments": {
+            "required": true,
+            "columns": {
+                "id": true,
+                "name": true
+            }
+        }
+    }
+}

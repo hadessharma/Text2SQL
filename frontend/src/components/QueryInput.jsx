@@ -1,10 +1,23 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const QueryInput = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [query, setQuery] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [databaseId, setDatabaseId] = useState(null);
+
+  useEffect(() => {
+    if (location.state?.database_id) {
+      setDatabaseId(location.state.database_id);
+      console.log("Using Database ID:", location.state.database_id);
+    } else {
+      console.warn("No Database ID found in navigation state.");
+      // Optional: Redirect back to upload if no ID? 
+      // navigate('/'); 
+    }
+  }, [location.state, navigate]);
 
   const exampleQueries = [
     "Show me all users who made orders in the last month",
@@ -19,24 +32,30 @@ const QueryInput = () => {
 
     setIsGenerating(true);
     try {
-      const dbId = localStorage.getItem("db_id");
-
-      if (!dbId) {
-        alert("Please upload a schema first!");
+      if (!databaseId) {
+        alert("No Database ID found. Please upload a schema first.");
         return;
       }
-      
-      const response = await fetch("http://localhost:8000/api/generate-sql", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ database_id: dbId, user_query: query })
+
+      console.log('Generating SQL for query:', query, 'with DB ID:', databaseId);
+
+      const response = await fetch('http://localhost:8000/api/generate-sql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          database_id: databaseId,
+          user_query: query
+        }),
       });
 
-      const data = await response.json();
-
-      navigate("/results", {
-        state: { response: data }
-      });
+      if (response.ok) {
+        const data = await response.json();
+        navigate('/results', { state: { results: data } });
+      } else {
+        console.error('Failed to generate SQL');
+      }
     } catch (error) {
       console.error("Error generating SQL:", error);
     } finally {
