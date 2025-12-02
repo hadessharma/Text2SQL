@@ -142,10 +142,12 @@ def is_semantically_valid(sql_query: str, kg_data: Dict) -> Dict:
 def normalize_kg(kg_data: Dict) -> Dict:
     normalized = {}
     for table, table_info in kg_data.items():
+        if not isinstance(table_info, dict):
+            continue
         table_l = table.lower()
         normalized[table_l] = {
-            "required": table_info["required"],
-            "columns": {col.lower(): req for col, req in table_info["columns"].items()}
+            "required": table_info.get("required", False),
+            "columns": {col.lower(): req for col, req in table_info.get("columns", {}).items()}
         }
     return normalized
 
@@ -192,6 +194,12 @@ def is_logically_valid(sql_query: str, kg_data: Dict) -> Dict:
     kg_data = normalize_kg(kg_data)
     # Normalize spacing
     sql_clean = sql_query.strip().lower()
+
+    # ----------- CHECK SELECT -----------
+    m = re.match(r"select\s+", sql_clean)
+    if m:
+        # SELECT is always allowed (read-only)
+        return {"valid": True, "errors": []}
 
     # ----------- CHECK CREATE TABLE -----------
     m = re.match(r"create\s+table\s+(\w+)", sql_clean)

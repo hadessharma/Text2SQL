@@ -13,7 +13,7 @@ Endpoints:
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict
 import re
 
 # TODO: Import your modules once implemented
@@ -21,7 +21,7 @@ import llm_handler
 from kg_store import save_kg, load_kg
 from llm_handler import generate_sql
 from validation_gauntlet import validate_query
-from trc_handler import convert_sql_to_trc
+from trc_handler import convert_sql_to_trc, format_trc_explanation
 
 app = FastAPI(title="Text2SQL API", version="1.0.0")
 
@@ -61,7 +61,7 @@ class QueryResponse(BaseModel):
     """Response model for SQL generation"""
     original_query: str
     sql_query: str
-    trc_explanation: str
+    trc_explanation: Dict
     validation_status: dict  # Results from three-stage validation
     errors: Optional[list] = None
 
@@ -176,12 +176,21 @@ async def generate_sql_endpoint(request: QueryRequest):
 
         print("Generated SQL:", sql_query)
 
+        # 4. Generate TRC explanation
+        trc_query = convert_sql_to_trc(sql_query, kg_data)
+        trc_explanation = format_trc_explanation(trc_query, sql_query, request.user_query)
+
+        # 5. Validate query
+        # Use structured tables data for validation
+        tables_data_for_val = kg_data.get("generated_kg", {}).get("tables", {})
+        validation_result = validate_query(sql_query, tables_data_for_val)
+
         return QueryResponse(
             original_query=request.user_query,
             sql_query=sql_query,
-            trc_explanation="",
-            validation_status={},
-            errors=None
+            trc_explanation=trc_explanation,
+            validation_status=validation_result,
+            errors=validation_result.get("errors")
         )
 
     except Exception as e:

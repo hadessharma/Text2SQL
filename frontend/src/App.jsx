@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import SchemaUpload from './components/SchemaUpload';
 import QueryInput from './components/QueryInput';
 import OutputDisplay from './components/OutputDisplay';
@@ -14,9 +14,11 @@ function App() {
             <div className="flex justify-between items-center py-6">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <h1 className="text-3xl font-bold text-gray-900">
-                    Text2SQL System
-                  </h1>
+                  <Link to="/" className="hover:opacity-80 transition-opacity">
+                    <h1 className="text-3xl font-bold text-gray-900">
+                      Text2SQL System
+                    </h1>
+                  </Link>
                 </div>
               </div>
               <div className="text-sm text-gray-500">

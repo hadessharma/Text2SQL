@@ -68,9 +68,10 @@ def convert_sql_to_trc(sql_query: str, kg_data: Dict) -> str:
         from_tables = _extract_from_tables(statement)
         where_conditions = _extract_where_conditions(statement)
         joins = _extract_joins(statement)
+        order_by = _extract_order_by(statement)
         
         # Build TRC expression
-        trc = _build_trc_expression(select_attrs, from_tables, where_conditions, joins, statement)
+        trc = _build_trc_expression(select_attrs, from_tables, where_conditions, joins, order_by, statement)
         
         return trc
     
@@ -80,37 +81,23 @@ def convert_sql_to_trc(sql_query: str, kg_data: Dict) -> str:
         raise ValueError(f"Failed to convert SQL to TRC: {str(e)}")
 
 
-def format_trc_explanation(trc_expression: str, sql_query: str, user_query: str) -> str:
+def format_trc_explanation(trc_expression: str, sql_query: str, user_query: str) -> Dict[str, str]:
     """
     Format TRC explanation for user display.
     
-    Formats a human-readable explanation showing:
-    - Original natural language query
-    - Generated SQL
-    - TRC translation
-    - Explanation of what the TRC means
-    
-    Args:
-        trc_expression: TRC expression
-        sql_query: Original SQL query
-        user_query: Original natural language query
-        
     Returns:
-        str: Formatted explanation string
+        Dict: Structured explanation with keys:
+            - query: Original user query
+            - sql: Generated SQL
+            - trc: TRC formula
+            - description: English explanation
     """
-    explanation = f"""
-Query Translation:
-"{user_query}"
-
-SQL Generated:
-{sql_query}
-
-TRC Output:
-{trc_expression}
-
-The TRC expression shows the attributes that would be displayed by this SQL query.
-"""
-    return explanation.strip()
+    return {
+        "query": user_query,
+        "sql": sql_query,
+        "trc": trc_expression,
+        "description": "The TRC expression shows the attributes that would be displayed by this SQL query."
+    }
 
 
 # Helper functions for SQL parsing and TRC construction
@@ -333,9 +320,62 @@ def _extract_joins(statement: Statement) -> List[Dict[str, str]]:
     return joins
 
 
+def _extract_order_by(statement: Statement) -> List[Dict[str, str]]:
+    """
+    Extract ORDER BY information.
+    
+    Returns:
+        List of dicts with 'column' and 'direction' keys
+    """
+    order_by = []
+    
+    # Find ORDER BY clause
+    idx = -1
+    for i, token in enumerate(statement.tokens):
+        if token.ttype is Keyword and token.value.upper() == 'ORDER BY':
+            idx = i
+            break
+            
+    if idx != -1:
+        # Process tokens after ORDER BY
+        j = idx + 1
+        while j < len(statement.tokens):
+            token = statement.tokens[j]
+            if isinstance(token, IdentifierList):
+                for identifier in token.get_identifiers():
+                    _process_order_identifier(identifier, order_by)
+            elif isinstance(token, Identifier):
+                _process_order_identifier(token, order_by)
+            elif token.ttype is Keyword and token.value.upper() in ('ASC', 'DESC'):
+                # Handle standalone direction keywords if not caught in identifier
+                if order_by:
+                    order_by[-1]['direction'] = token.value.upper()
+            j += 1
+            
+    return order_by
+
+
+def _process_order_identifier(identifier: Identifier, order_by: List[Dict]):
+    """Helper to process an identifier in ORDER BY clause."""
+    # Check for direction in the identifier itself
+    s = str(identifier).strip()
+    parts = re.split(r'\s+', s)
+    
+    direction = 'ASC' # Default
+    column = parts[0]
+    
+    if len(parts) > 1:
+        if parts[-1].upper() in ('ASC', 'DESC'):
+            direction = parts[-1].upper()
+            column = ' '.join(parts[:-1])
+            
+    order_by.append({'column': column, 'direction': direction})
+
+
 def _build_trc_expression(select_attrs: List[Dict], from_tables: List[Dict], 
-                         where_conditions: List[str], joins: List[Dict], 
-                         statement: Statement) -> str:
+                          where_conditions: List[str], joins: List[Dict], 
+                          order_by: List[Dict],
+                          statement: Statement) -> str:
     """
     Build TRC expression from parsed SQL components.
     
@@ -467,6 +507,26 @@ def _build_trc_expression(select_attrs: List[Dict], from_tables: List[Dict],
         trc = f"{{ {attr_list} | {quantifier_str}({predicate_str}) }}"
     else:
         trc = f"{{ {attr_list} | {predicate_str} }}"
+        
+    # Append sorting information (educational annotation)
+    if order_by:
+        sort_parts = []
+        for item in order_by:
+            col = item['column']
+            # Try to map alias to tuple variable
+            if '.' in col:
+                parts = col.split('.')
+                alias = parts[0]
+                attr = parts[1]
+                if alias in alias_to_tuple_var:
+                    col = f"{alias_to_tuple_var[alias]}.{attr}"
+            else:
+                # Assume main table
+                col = f"{main_alias}.{col}"
+                
+            sort_parts.append(f"{col} {item['direction']}")
+            
+        trc += f" sorted by {', '.join(sort_parts)}"
     
     return trc
 
@@ -519,4 +579,3 @@ def _convert_condition_to_trc(condition: str, table_aliases: List[str], alias_to
             trc_condition = re.sub(pattern, rf'{alias}.\1', trc_condition)
     
     return trc_condition
-
