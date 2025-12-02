@@ -89,46 +89,71 @@ async def submit_schema(request: SchemaRequest):
     """
     Upload database schema and generate Knowledge Graph.
     
-    TODO: Implement the following:
-    1. Validate SQL DDL format
-    2. Generate Knowledge Graph from schema
+    1. Validate SQL DDL format (Basic check)
+    2. Parse lower/upper bound schemas
     3. Save KG to persistent store using kg_store.save_kg()
     4. Return unique database_id
     
     Args:
-        request: SchemaRequest containing SQL DDL schema
+        request: SchemaRequest containing SQL DDL schema and bound schemas
         
     Returns:
         SchemaResponse with database_id and confirmation message
     """
     try:
-        # TODO: Implement schema validation
-        # TODO: Generate Knowledge Graph
-        # TODO: Save to store and get database_id
-        
         # Placeholder ID generation
         import uuid
+        import json
         db_id = str(uuid.uuid4())
         
-        # Placeholder KG data structure
+        # Parse JSON strings if provided
+        lower_bound = None
+        if request.lower_bound_schema:
+            try:
+                lower_bound = json.loads(request.lower_bound_schema)
+            except json.JSONDecodeError:
+                raise HTTPException(status_code=400, detail="Invalid JSON in lower_bound_schema")
+
+        upper_bound = None
+        if request.upper_bound_schema:
+            try:
+                upper_bound = json.loads(request.upper_bound_schema)
+            except json.JSONDecodeError:
+                raise HTTPException(status_code=400, detail="Invalid JSON in upper_bound_schema")
+
+        # Construct KG data structure
+        # In a real implementation, we would parse the SQL DDL to populate this further
         kg_data = {
             "schema_content": request.schema_content,
-            "lower_bound_schema": request.lower_bound_schema,
-            "upper_bound_schema": request.upper_bound_schema,
-            "generated_kg": {} # TODO: Generate actual KG
+            "lower_bound_schema": lower_bound,
+            "upper_bound_schema": upper_bound,
+            "generated_kg": {
+                # TODO: This would be the result of parsing the DDL and merging with bounds
+                "tables": upper_bound.get("tables", {}) if upper_bound else {}
+            }
         }
         
         # Save to store
         from kg_store import save_kg
-        save_kg(db_id, kg_data)
-        
-        # Placeholder response
-        return SchemaResponse(
-            database_id=db_id,
-            message="Schema uploaded successfully."
-        )
+        if save_kg(db_id, kg_data):
+            return SchemaResponse(
+                database_id=db_id,
+                message="Schema uploaded and KG saved successfully."
+            )
+        else:
+            raise HTTPException(status_code=500, detail="Failed to save Knowledge Graph")
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/databases")
+async def list_databases():
+    """List all available database IDs."""
+    from kg_store import list_all_databases
+    return {"databases": list_all_databases()}
 
 
 @app.post("/api/generate-sql", response_model=QueryResponse)

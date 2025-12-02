@@ -139,6 +139,10 @@ def list_all_databases() -> list:
     Returns:
         list: List of database IDs
     """
-    # TODO: Scan storage directory and return all db_ids
-    return []
+    databases = []
+    if STORAGE_DIR.exists():
+        for file_path in STORAGE_DIR.glob("*.json"):
+            # Return just the ID (filename without extension)
+            databases.append(file_path.stem)
+    return databases
 

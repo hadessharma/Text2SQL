@@ -7,6 +7,22 @@ const SchemaUpload = () => {
   const [schemaText, setSchemaText] = useState('');
   const [lowerBoundSchema, setLowerBoundSchema] = useState('');
   const [upperBoundSchema, setUpperBoundSchema] = useState('');
+  const [existingDbs, setExistingDbs] = useState([]);
+
+  React.useEffect(() => {
+    const fetchDatabases = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/databases');
+        if (response.ok) {
+          const data = await response.json();
+          setExistingDbs(data.databases || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch databases:', error);
+      }
+    };
+    fetchDatabases();
+  }, []);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -87,7 +103,7 @@ const SchemaUpload = () => {
           const data = await response.json();
           localStorage.setItem("db_id", data.database_id);
           console.log('Schema submitted:', data);
-          navigate('/query');
+          navigate('/query', { state: { database_id: data.database_id } });
         } else {
           console.error('Failed to submit schema');
         }
@@ -113,6 +129,33 @@ const SchemaUpload = () => {
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Upload your database schema in SQL DDL format to generate a Knowledge Graph that will help convert natural language queries to SQL.
           </p>
+        </div>
+
+        {/* Existing Database Selection */}
+        <div className="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Select Existing Database</h2>
+          <div className="flex gap-4">
+            <select
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onChange={(e) => {
+                if (e.target.value) {
+                  navigate('/query', { state: { database_id: e.target.value } });
+                }
+              }}
+              defaultValue=""
+            >
+              <option value="" disabled>Select a previously uploaded database...</option>
+              {existingDbs.map((dbId) => (
+                <option key={dbId} value={dbId}>{dbId}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="relative flex py-5 items-center">
+          <div className="flex-grow border-t border-gray-300"></div>
+          <span className="flex-shrink-0 mx-4 text-gray-400">OR Upload New Schema</span>
+          <div className="flex-grow border-t border-gray-300"></div>
         </div>
 
         {/* Upload Area */}
