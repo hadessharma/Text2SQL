@@ -39,6 +39,7 @@ def generate_sql(user_query: str, tables: Dict[str, List[str]]) -> str:
     """
     try:
         if not TRANSFORMERS_AVAILABLE:
+            print("Transformers not available, using fallback SQL generation.")
             return _fallback_sql_generation(tables, user_query)
 
         initialize_model()

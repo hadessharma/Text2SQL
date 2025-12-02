@@ -85,6 +85,7 @@ const SchemaUpload = () => {
 
         if (response.ok) {
           const data = await response.json();
+          localStorage.setItem("db_id", data.database_id);
           console.log('Schema submitted:', data);
           navigate('/query');
         } else {

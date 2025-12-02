@@ -14,14 +14,18 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
+import re
 
 # TODO: Import your modules once implemented
-# from kg_store import save_kg
-# from llm_handler import generate_sql
-# from validation_gauntlet import validate_query
-# from trc_handler import convert_sql_to_trc
+import llm_handler
+from kg_store import save_kg, load_kg
+from llm_handler import generate_sql
+from validation_gauntlet import validate_query
+from trc_handler import convert_sql_to_trc
 
 app = FastAPI(title="Text2SQL API", version="1.0.0")
+
+llm_handler.initialize_model()
 
 # CORS middleware for frontend integration
 app.add_middleware(
@@ -55,11 +59,30 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     """Response model for SQL generation"""
+    original_query: str
     sql_query: str
     trc_explanation: str
     validation_status: dict  # Results from three-stage validation
     errors: Optional[list] = None
 
+def _extract_tables_from_schema(schema_ddl: str):
+    """
+    Very simple SQL parser to extract tables + columns.
+    Works for CREATE TABLE ... (col ...).
+    """
+    tables = {}
+    pattern = r"CREATE TABLE (\w+)\s*\((.*?)\);"
+    matches = re.findall(pattern, schema_ddl, re.DOTALL | re.IGNORECASE)
+
+    for table_name, cols_raw in matches:
+        cols = []
+        for line in cols_raw.split(","):
+            col = line.strip().split()[0]
+            if col:
+                cols.append(col)
+        tables[table_name] = cols
+
+    return tables
 
 @app.post("/api/submit-schema", response_model=SchemaResponse)
 async def submit_schema(request: SchemaRequest):
@@ -109,47 +132,33 @@ async def submit_schema(request: SchemaRequest):
 
 
 @app.post("/api/generate-sql", response_model=QueryResponse)
-async def generate_sql(request: QueryRequest):
-    """
-    Process natural language query and generate validated SQL.
-    
-    TODO: Implement the following:
-    1. Load schema and KG from store using kg_store.load_kg()
-    2. Generate initial SQL using llm_handler.generate_sql()
-    3. Run three-stage validation using validation_gauntlet.validate_query()
-    4. Convert to TRC using trc_handler.convert_sql_to_trc()
-    5. Return SQL, TRC explanation, and validation results
-    
-    Args:
-        request: QueryRequest containing database_id and natural language query
-        
-    Returns:
-        QueryResponse with SQL, TRC explanation, and validation status
-    """
+async def generate_sql_endpoint(request: QueryRequest):
     try:
-        # TODO: Load KG from store
-        # kg_data = load_kg(request.database_id)
+        # Load schema+KG from database store
+        kg_data = load_kg(request.database_id)
         
-        # TODO: Generate initial SQL using FLAN-T5
-        # initial_sql = generate_sql(schema, request.user_query)
-        
-        # TODO: Run three-stage validation
-        # validation_results = validate_query(initial_sql, kg_data)
-        
-        # TODO: Convert to TRC
-        # trc_explanation = convert_sql_to_trc(initial_sql)
-        
-        # Placeholder response
+
+        # Extract tables + columns for prompt
+        # (Assuming schema was saved under "generated_kg" or raw SQL)
+        schema_dict = _extract_tables_from_schema(kg_data["schema_content"])
+        print("Extracted schema:", schema_dict)
+        print("User query:", request.user_query)
+        # 3. Generate SQL using your FLAN-T5 LLM
+        sql_query = generate_sql(
+            user_query=request.user_query,
+            tables=schema_dict
+        )
+
+        print("Generated SQL:", sql_query)
+
         return QueryResponse(
-            sql_query="SELECT * FROM table WHERE condition;  -- TODO: Generate actual SQL",
-            trc_explanation="{t | Table(t) ∧ condition(t)}  -- TODO: Generate actual TRC",
-            validation_status={
-                "syntactic": "pending",
-                "semantic": "pending",
-                "logical": "pending"
-            },
+            original_query=request.user_query,
+            sql_query=sql_query,
+            trc_explanation="",
+            validation_status={},
             errors=None
         )
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

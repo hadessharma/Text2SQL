@@ -16,16 +16,29 @@ const QueryInput = () => {
 
   const handleGenerateSQL = async () => {
     if (!query.trim()) return;
-    
+
     setIsGenerating(true);
     try {
-      // TODO: Implement API call to generate SQL
-      console.log('Generating SQL for query:', query);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      navigate('/results');
+      const dbId = localStorage.getItem("db_id");
+
+      if (!dbId) {
+        alert("Please upload a schema first!");
+        return;
+      }
+      
+      const response = await fetch("http://localhost:8000/api/generate-sql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ database_id: dbId, user_query: query })
+      });
+
+      const data = await response.json();
+
+      navigate("/results", {
+        state: { response: data }
+      });
     } catch (error) {
-      console.error('Error generating SQL:', error);
+      console.error("Error generating SQL:", error);
     } finally {
       setIsGenerating(false);
     }
