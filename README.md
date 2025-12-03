@@ -2,7 +2,7 @@
 
 A comprehensive system that converts natural language queries into SQL using Knowledge Graphs and Tuple Relational Calculus. This project consists of a modern React frontend and a Python/FastAPI backend.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -71,7 +71,7 @@ A comprehensive system that converts natural language queries into SQL using Kno
    - Swagger UI: `http://localhost:8000/docs`
    - ReDoc: `http://localhost:8000/redoc`
 
-## 🛠️ Available Scripts
+## Available Scripts
 
 | Command | Description |
 |---------|-------------|
@@ -95,7 +95,7 @@ A comprehensive system that converts natural language queries into SQL using Kno
 - **Copy to Clipboard**: One-click SQL copying functionality
 - **Loading States**: Visual feedback during API operations
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 Text2SQL/
@@ -183,7 +183,7 @@ Text2SQL/
   - Execution information
 - Syntax highlighting and copy-to-clipboard functionality
 
-## 🎯 User Workflow
+## User Workflow
 
 ### Phase 1: Schema Upload (Owner)
 1. Owner uploads database schema in SQL DDL format via frontend
@@ -203,7 +203,7 @@ Text2SQL/
 6. Results (SQL + TRC explanation) are returned to frontend
 7. User views generated SQL, TRC explanation, and validation details
 
-## 🔧 Configuration
+## Configuration
 
 ### Frontend Environment Variables
 
@@ -280,7 +280,7 @@ The frontend communicates with the backend through the following REST endpoints:
   }
   ```
 
-## 🏛️ Architecture
+## Architecture
 
 ```
 Frontend (React) 
