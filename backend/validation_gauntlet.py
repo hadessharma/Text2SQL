@@ -20,7 +20,7 @@ import re
 # import sqlparse
 
 
-def validate_query(sql_query: str, kg_data: Dict) -> Dict:
+def validate_query(sql_query: str, kg_data: Dict, user_query: str = "") -> Dict:
     """
     Run three-stage validation pipeline on SQL query.
     
@@ -29,6 +29,7 @@ def validate_query(sql_query: str, kg_data: Dict) -> Dict:
     Args:
         sql_query: SQL query string to validate
         kg_data: Knowledge Graph data for semantic validation
+        user_query: Original natural language query for intent analysis
         
     Returns:
         Dict: Validation results with status and errors for each stage
@@ -56,7 +57,7 @@ def validate_query(sql_query: str, kg_data: Dict) -> Dict:
         
         # Only proceed to Stage 3 if Stage 2 passes
         if results["semantic"]["valid"]:
-            results["logical"] = is_logically_valid(sql_query, kg_data)
+            results["logical"] = is_logically_valid(sql_query, kg_data, user_query)
     
     # Overall validation passes only if all stages pass
     results["overall_valid"] = (
@@ -152,48 +153,36 @@ def normalize_kg(kg_data: Dict) -> Dict:
     return normalized
 
 
-def is_logically_valid(sql_query: str, kg_data: Dict) -> Dict:
+def is_logically_valid(sql_query: str, kg_data: Dict, user_query: str = "") -> Dict:
     """
     Takes in a JSON of the following format for KG
-    [
-        {
-            'name' : 'tableOne',
-            'required' : 'TRUE'
-            'columnes' : [
-                {
-                    'name' : 'columnOne'
-                    'required' : 'TRUE'
-                },
-                {
-                    'name' : 'columnTwo'
-                    'required' : 'False'
-                }
-            ]
-        },
-        {
-            'name' : 'tableOne',
-            'required' : 'TRUE'
-            'columnes' : [
-                {
-                    'name' : 'columnOne'
-                    'required' : 'TRUE'
-                },
-                {
-                    'name' : 'columnTwo'
-                    'required' : 'False'
-                }
-            ]
-        }
-    ]
+    ...
     Returns:
     Dict: {"valid": bool, "errors": list}
     Checks for CREATE and DROP queries.
     Also checks for insert.
     """
     errors = []
+    
+    # ----------- CHECK USER INTENT -----------
+    # Check if the user is asking for destructive actions
+    if user_query:
+        user_query_lower = user_query.lower()
+        destructive_keywords = ["delete", "remove", "drop", "insert", "update", "truncate", "alter"]
+        for keyword in destructive_keywords:
+            # Simple check: word boundary to avoid partial matches like "update_date"
+            if re.search(r'\b' + re.escape(keyword) + r'\b', user_query_lower):
+                return {"valid": False, "errors": [f"Destructive action '{keyword}' is not allowed."]}
+
     kg_data = normalize_kg(kg_data)
     # Normalize spacing
     sql_clean = sql_query.strip().lower()
+
+    # ----------- CHECK DELETE -----------
+    # Use search instead of match to find it anywhere (though usually it's at start)
+    # Also check for just "delete" keyword if it's not followed by "from" immediately in some weird cases
+    if "delete" in sql_clean:
+         return {"valid": False, "errors": ["DELETE queries are not allowed."]}
 
     # ----------- CHECK SELECT -----------
     m = re.match(r"select\s+", sql_clean)
@@ -241,7 +230,7 @@ def is_logically_valid(sql_query: str, kg_data: Dict) -> Dict:
         if table not in kg_data:
             errors.append(f"ALTER TABLE on '{table}' is not allowed (table not defined).")
         else:
-            if column not in tabkg_datales[table]["columns"]:
+            if column not in kg_data[table]["columns"]: # Fixed typo tabkg_datales -> kg_data
                 errors.append(f"Column '{column}' does not exist in metadata.")
             elif kg_data[table]["columns"][column]:
                 errors.append(f"Column '{column}' is required and cannot be dropped.")

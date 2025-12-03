@@ -183,7 +183,11 @@ async def generate_sql_endpoint(request: QueryRequest):
         # 5. Validate query
         # Use structured tables data for validation
         tables_data_for_val = kg_data.get("generated_kg", {}).get("tables", {})
-        validation_result = validate_query(sql_query, tables_data_for_val)
+        validation_result = validate_query(sql_query, tables_data_for_val, request.user_query)
+
+        # Redact SQL if validation failed
+        if not validation_result["overall_valid"]:
+            sql_query = ""
 
         return QueryResponse(
             original_query=request.user_query,
