@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { format } from 'sql-formatter';
 
 const OutputDisplay = () => {
   const navigate = useNavigate();
@@ -8,6 +9,7 @@ const OutputDisplay = () => {
 
   // Pull API response from navigation state
   const responseData = location.state?.response;
+  const databaseId = location.state?.database_id;
 
   if (!responseData) {
     return (
@@ -19,7 +21,7 @@ const OutputDisplay = () => {
           Please run a query first.
         </p>
         <button
-          onClick={() => navigate('/query')}
+          onClick={() => navigate('/query', { state: { database_id: databaseId } })}
           className="px-6 py-3 bg-purple-600 text-white rounded-lg"
         >
           Go to Query Page
@@ -31,6 +33,8 @@ const OutputDisplay = () => {
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
   };
+
+  const formattedSql = responseData.sql_query ? format(responseData.sql_query, { language: 'postgresql' }) : '';
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -104,7 +108,7 @@ const OutputDisplay = () => {
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Generated SQL Query</h3>
                 <button
-                  onClick={() => copyToClipboard(responseData.sql_query)}
+                  onClick={() => copyToClipboard(formattedSql)}
                   className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center"
                 >
                   Copy SQL
@@ -113,7 +117,7 @@ const OutputDisplay = () => {
 
               <div className="bg-gray-900 rounded-lg p-6 overflow-x-auto">
                 <pre className="text-green-400 text-sm font-mono whitespace-pre-wrap">
-                  {responseData.sql_query}
+                  {formattedSql}
                 </pre>
               </div>
             </div>
@@ -238,7 +242,7 @@ const OutputDisplay = () => {
         {/* Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
-            onClick={() => navigate('/query')}
+            onClick={() => navigate('/query', { state: { database_id: databaseId } })}
             className="px-8 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
           >
             New Query

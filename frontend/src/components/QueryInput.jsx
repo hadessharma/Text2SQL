@@ -52,7 +52,7 @@ const QueryInput = () => {
 
       if (response.ok) {
         const data = await response.json();
-        navigate('/results', { state: { response: data } });
+        navigate('/results', { state: { response: data, database_id: databaseId } });
       } else {
         console.error('Failed to generate SQL');
       }
